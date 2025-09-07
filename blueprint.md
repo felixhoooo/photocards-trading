@@ -22,8 +22,10 @@ A web application for K-Pop photocard enthusiasts to trade and showcase their co
     *   Client-side routing with `react-router-dom`.
     *   Page transitions with `framer-motion`.
     *   Dark/Light theme toggle.
+*   **Deployment:** The application is deployed to Firebase Hosting and is publicly available at https://photo-card-trader.web.app.
 
 ## Recent Changes
 
 *   Reverted internationalization (i18n) implementation.
 *   Fixed a syntax error in the `Layout.jsx` component.
+*   Deployed the application to Firebase Hosting.
