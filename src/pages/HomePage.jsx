@@ -1,119 +1,171 @@
 
-import React, { useState } from "react";
-import { collection } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { useCollection } from "react-firebase-hooks/firestore";
 import {
-  Grid,
-  CircularProgress,
-  Typography,
   Container,
-  Box,
   TextField,
+  Typography,
+  Box,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
-  Stack,
+  CircularProgress,
+  Alert,
+  AlertTitle,
+  Modal,
+  Backdrop,
+  Fade,
+  Pagination,
+  Paper
 } from "@mui/material";
 import Card from "../components/Card";
 
 const categories = ["All", "K-Pop", "Anime", "Gaming", "Misc"];
+const CARDS_PER_PAGE = 10;
 
 const HomePage = () => {
-  const [snapshot, loading, error] = useCollection(collection(db, "cards"));
-  const [searchQuery, setSearchQuery] = useState("");
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [openOverlay, setOpenOverlay] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
+  const [page, setPage] = useState(1);
 
-  const cards = snapshot?.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "cards"), 
+      (snapshot) => {
+        const cardsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setCards(cardsData);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Firestore snapshot error:", err);
+        setError(err);
+        setLoading(false);
+      });
 
-  const filteredCards = cards
-    ?.filter((card) =>
-      card.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .filter((card) =>
-      selectedCategory === "All" ? true : card.category === selectedCategory
+    return () => unsubscribe();
+  }, []);
+
+  const filteredCards = cards.filter(card => {
+    const lowercasedSearchTerm = searchTerm.toLowerCase();
+    const cardIdMatch = card.cardId?.toLowerCase().includes(lowercasedSearchTerm);
+    const hashtagMatch = Array.isArray(card.hashtags) && card.hashtags.some(tag => tag.toLowerCase().includes(lowercasedSearchTerm));
+    const searchTermMatch = cardIdMatch || hashtagMatch;
+    const categoryMatch = selectedCategory === 'All' || card.category === selectedCategory;
+    return searchTermMatch && categoryMatch;
+  });
+
+  const paginatedCards = filteredCards.slice((page - 1) * CARDS_PER_PAGE, page * CARDS_PER_PAGE);
+
+  const handleOpenOverlay = (imageUrl) => {
+    setSelectedImage(imageUrl);
+    setOpenOverlay(true);
+  };
+
+  const handleCloseOverlay = () => {
+    setOpenOverlay(false);
+    setSelectedImage('');
+  };
+  
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
+
+  if (loading) {
+    return <CircularProgress />;
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error">
+        <AlertTitle>Error</AlertTitle>
+        {error.message}
+      </Alert>
     );
+  }
 
   return (
     <Container maxWidth="lg">
-      <Box
-        sx={{
-          py: { xs: 4, sm: 6, md: 8 },
-          textAlign: "center",
+      <Paper elevation={4} sx={{ my: 4, p: { xs: 2, sm: 3, md: 4 }, borderRadius: '16px' }}>
+        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 4 }}>
+          Photo Card Marketplace
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, mb: 4, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <TextField
+            fullWidth
+            label="Search by card ID or hashtag"
+            variant="outlined"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <FormControl fullWidth>
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              label="Category"
+            >
+              {categories.map(category => (
+                <MenuItem key={category} value={category}>{category}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </Paper>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' }, gap: '16px' }}>
+        {paginatedCards.map((card) => (
+            <Card key={card.id} card={card} onImageClick={handleOpenOverlay} />
+        ))}
+      </Box>
+      <Modal
+        open={openOverlay}
+        onClose={handleCloseOverlay}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
         }}
       >
-        <Typography
-          variant="h2"
-          component="h1"
-          gutterBottom
-          sx={{
-            fontWeight: "bold",
-            fontSize: { xs: "2.5rem", sm: "3.5rem", md: "4.5rem" },
-          }}
-        >
-          K-Pop Trading Cards
-        </Typography>
-        <Typography
-          variant="h5"
-          color="text.secondary"
-          paragraph
-          sx={{
-            fontSize: { xs: "1rem", sm: "1.25rem" },
-          }}
-        >
-          Your one-stop shop for collecting and trading your favorite K-Pop photocards.
-        </Typography>
+        <Fade in={openOverlay}>
+            <Box 
+                onClick={handleCloseOverlay} 
+                sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: { xs: '100vw', sm: 'auto' },
+                    height: { xs: '100vh', sm: 'auto' },
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    bgcolor: 'background.paper',
+                    boxShadow: 24,
+                    p: { xs: 0, sm: 1 },
+                    outline: 'none',
+                    cursor: 'pointer'
+                }}
+            >
+                <img 
+                    src={selectedImage} 
+                    alt="Full size" 
+                    style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'contain',
+                    }}
+                />
+            </Box>
+        </Fade>
+      </Modal>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        <Pagination count={Math.ceil(filteredCards.length / CARDS_PER_PAGE)} page={page} onChange={handlePageChange} />
       </Box>
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        sx={{ mb: 4 }}
-      >
-        <TextField
-          fullWidth
-          label="Search by card name"
-          variant="outlined"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <FormControl fullWidth>
-          <InputLabel>Category</InputLabel>
-          <Select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            label="Category"
-          >
-            {categories.map((category) => (
-              <MenuItem key={category} value={category}>
-                {category}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Stack>
-      {loading && (
-        <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
-          <CircularProgress />
-        </Box>
-      )}
-      {error && <Typography color="error">Error: {error.message}</Typography>}
-      {!loading && !error && filteredCards && filteredCards.length === 0 && (
-        <Typography align="center" sx={{ mt: 4 }}>
-          No matching cards found.
-        </Typography>
-      )}
-      {!loading && !error && filteredCards && (
-        <Grid container spacing={3} justifyContent="center">
-          {filteredCards.map((card) => (
-            <Grid item key={card.id}>
-              <Box sx={{ width: 300 }}>
-                <Card card={card} />
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      )}
     </Container>
   );
 };

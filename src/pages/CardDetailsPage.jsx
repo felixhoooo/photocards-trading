@@ -12,6 +12,7 @@ import {
   Box,
   Paper,
 } from '@mui/material';
+import FlipCard from '../components/FlipCard';
 
 const CardDetailsPage = () => {
   const { cardId } = useParams();
@@ -26,6 +27,7 @@ const CardDetailsPage = () => {
   }
 
   if (error) {
+    console.error("CardDetailsPage: Error fetching document:", error);
     return <Typography color="error">Error: {error.message}</Typography>;
   }
 
@@ -33,23 +35,27 @@ const CardDetailsPage = () => {
     return <Typography>Card not found!</Typography>;
   }
 
+  console.log("CardDetailsPage: Full card data object from Firestore:", card);
+
+  const backImage = typeof card.backImageUrl === 'string' && card.backImageUrl.length > 0 
+    ? card.backImageUrl 
+    : null;
+
+  console.log("CardDetailsPage: Prop being passed to FlipCard as 'backImage':", backImage);
+
   return (
     <Container maxWidth="md" sx={{ my: 4 }}>
       <Paper elevation={3}>
         <Grid container>
           <Grid item xs={12} md={6}>
-            <Box sx={{ p: 2 }}>
-              <img
-                src={card.imageUrl}
-                alt={card.name}
-                style={{ width: '100%', height: 'auto', borderRadius: '8px' }}
-              />
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+              <FlipCard frontImage={card.imageUrl} backImage={backImage} />
             </Box>
           </Grid>
           <Grid item xs={12} md={6}>
             <Box sx={{ p: { xs: 2, sm: 3 } }}>
               <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                {card.name}
+                {card.cardId}
               </Typography>
               <Typography variant="body1" color="text.secondary" paragraph>
                 {card.details}
@@ -61,6 +67,16 @@ const CardDetailsPage = () => {
           </Grid>
         </Grid>
       </Paper>
+      {card.videoUrl && (
+        <Paper elevation={3} sx={{ mt: 4, p: 2 }}>
+          <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+            Card Video
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <video src={card.videoUrl} controls style={{ maxWidth: '100%', maxHeight: '400px' }} />
+          </Box>
+        </Paper>
+      )}
     </Container>
   );
 };

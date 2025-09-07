@@ -1,78 +1,142 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
-  Typography,
-  Button,
-  Box,
-  Container,
   IconButton,
+  Typography,
   Drawer,
   List,
   ListItem,
-  ListItemButton,
   ListItemText,
-  Divider,
-} from '@mui/material';
-import { Link, Outlet } from 'react-router-dom';
-import MenuIcon from '@mui/icons-material/Menu';
-
-const navItems = [
-  { text: 'Home', path: '/' },
-  { text: 'Admin', path: '/login' },
-];
+  CssBaseline,
+  Box,
+  Button,
+  Container,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const navigate = useNavigate();
+  const location = useLocation();
+  const auth = getAuth();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, [auth]);
 
   const handleDrawerToggle = () => {
-    setMobileOpen((prevState) => !prevState);
+    setMobileOpen(!mobileOpen);
   };
 
+  const navItems = [
+    { text: "Home", path: "/" },
+    user && { text: "Admin", path: "/admin" },
+    user ? { text: "Logout", path: "/logout" } : { text: "Login", path: "/login" },
+  ].filter(Boolean);
+
+    const handleNavClick = (path) => {
+    if (path === "/logout") {
+      auth.signOut().then(() => {
+        navigate("/login");
+      });
+    } else {
+      navigate(path);
+    }
+    if (isMobile) {
+      handleDrawerToggle();
+    }
+  };
+
+
   const drawer = (
-    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
+    <Box onClick={handleDrawerToggle} sx={{ textAlign: "center" }}>
       <Typography variant="h6" sx={{ my: 2 }}>
-        K-Pop Cards
+        22:22 K-Pop Card Trader
       </Typography>
-      <Divider />
       <List>
         {navItems.map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton sx={{ textAlign: 'center' }} component={Link} to={item.path}>
+            <Button
+              onClick={() => handleNavClick(item.path)}
+              sx={{ 
+                textAlign: "left", 
+                width: "100%", 
+                justifyContent: "flex-start",
+                color: location.pathname === item.path ? theme.palette.primary.main : 'inherit' 
+              }}
+            >
               <ListItemText primary={item.text} />
-            </ListItemButton>
+            </Button>
           </ListItem>
         ))}
       </List>
     </Box>
   );
 
+  const pageVariants = {
+    initial: {
+      opacity: 0,
+      x: "-100vw",
+      scale: 0.8
+    },
+    in: {
+      opacity: 1,
+      x: 0,
+      scale: 1
+    },
+    out: {
+      opacity: 0,
+      x: "100vw",
+      scale: 1.2
+    }
+  };
+
+  const pageTransition = {
+    type: "tween",
+    ease: "anticipate",
+    duration: 0.5
+  };
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <CssBaseline />
       <AppBar component="nav">
         <Container maxWidth="lg">
-          <Toolbar>
+          <Toolbar disableGutters>
             <IconButton
               color="inherit"
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { sm: 'none' } }}
+              sx={{ mr: 2, display: { sm: "none" } }}
             >
               <MenuIcon />
             </IconButton>
-            <Typography
-              variant="h6"
-              component={Link}
-              to="/"
-              sx={{ flexGrow: 1, color: 'inherit', textDecoration: 'none', display: { xs: 'none', sm: 'block' } }}
-            >
-              K-Pop Cards
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              22:22 K-Pop Card Trader
             </Typography>
-            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Box sx={{ display: { xs: "none", sm: "block" } }}>
               {navItems.map((item) => (
-                <Button key={item.text} sx={{ color: '#fff' }} component={Link} to={item.path}>
+                <Button
+                  key={item.text}
+                  onClick={() => handleNavClick(item.path)}
+                  sx={{ 
+                    color: "#fff",
+                    fontWeight: location.pathname === item.path ? 'bold' : 'normal' 
+                  }}
+                >
                   {item.text}
                 </Button>
               ))}
@@ -89,26 +153,33 @@ const Layout = () => {
             keepMounted: true, // Better open performance on mobile.
           }}
           sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
+            display: { xs: "block", sm: "none" },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
           }}
         >
           {drawer}
         </Drawer>
       </Box>
-      <Container component="main" sx={{ flexGrow: 1, py: { xs: 3, sm: 4 } }}>
-        <Toolbar />
-        <Outlet />
-      </Container>
-      <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', backgroundColor: (theme) => theme.palette.grey[200] }}>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={location.pathname}
+          initial="initial"
+          animate="in"
+          exit="out"
+          variants={pageVariants}
+          transition={pageTransition}
+        >
+          <Container component="main" sx={{ flexGrow: 1, py: { xs: 3, sm: 4 }, px: { xs: 1 } }}>
+            <Toolbar />
+            <Outlet />
+          </Container>
+        </motion.div>
+      </AnimatePresence>
+      <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', backgroundColor: 'transparent' }}>
         <Container maxWidth="lg">
           <Typography variant="body2" color="text.secondary" align="center">
             {'Copyright © '}
-            <Link to="/">
-              K-Pop Card Trader
-            </Link>{' '}
-            {new Date().getFullYear()}
-            {'.'}
+            22:22 K-Pop Card Trader {new Date().getFullYear()}.
           </Typography>
         </Container>
       </Box>
