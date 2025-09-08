@@ -13,9 +13,6 @@ import {
   CircularProgress,
   Alert,
   AlertTitle,
-  Modal,
-  Backdrop,
-  Fade,
   Pagination,
   Paper
 } from "@mui/material";
@@ -30,8 +27,6 @@ const HomePage = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [openOverlay, setOpenOverlay] = useState(false);
-  const [selectedImage, setSelectedImage] = useState('');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -61,16 +56,6 @@ const HomePage = () => {
 
   const paginatedCards = filteredCards.slice((page - 1) * CARDS_PER_PAGE, page * CARDS_PER_PAGE);
 
-  const handleOpenOverlay = (imageUrl) => {
-    setSelectedImage(imageUrl);
-    setOpenOverlay(true);
-  };
-
-  const handleCloseOverlay = () => {
-    setOpenOverlay(false);
-    setSelectedImage('');
-  };
-  
   const handlePageChange = (event, value) => {
     setPage(value);
   };
@@ -117,53 +102,13 @@ const HomePage = () => {
         </Box>
       </Paper>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' }, gap: '16px' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)', lg: 'repeat(5, 1fr)' }, gap: '16px' }}>
         {paginatedCards.map((card) => (
           <div key={card.id}>
-            <Card card={card} onImageClick={handleOpenOverlay} />
+            <Card card={card} />
           </div>
         ))}
       </Box>
-      <Modal
-        open={openOverlay}
-        onClose={handleCloseOverlay}
-        closeAfterTransition
-        BackdropComponent={Backdrop}
-        BackdropProps={{
-          timeout: 500,
-        }}
-      >
-        <Fade in={openOverlay}>
-            <Box 
-                onClick={handleCloseOverlay} 
-                sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: { xs: '100vw', sm: 'auto' },
-                    height: { xs: '100vh', sm: 'auto' },
-                    maxWidth: '90vw',
-                    maxHeight: '90vh',
-                    bgcolor: 'background.paper',
-                    boxShadow: 24,
-                    p: { xs: 0, sm: 1 },
-                    outline: 'none',
-                    cursor: 'pointer'
-                }}
-            >
-                <img 
-                    src={selectedImage} 
-                    alt="Full size" 
-                    style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        objectFit: 'contain',
-                    }}
-                />
-            </Box>
-        </Fade>
-      </Modal>
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
         <Pagination count={Math.ceil(filteredCards.length / CARDS_PER_PAGE)} page={page} onChange={handlePageChange} />
       </Box>

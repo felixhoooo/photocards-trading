@@ -35,6 +35,7 @@ function App() {
               <Route path="/admin" element={<Navigate to="/cards" />} />
               <Route path="/card/:id" element={<CardDetailsPage />} />
               <Route path="/profile" element={user ? <ProfilePage /> : <LoginPage />} />
+              <Route path="/profile/:userId" element={<ProfilePage />} />
             </Route>
           </Routes>
         </Suspense>

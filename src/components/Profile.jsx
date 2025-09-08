@@ -6,33 +6,64 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Avatar, Button, TextField, Box, Typography, CircularProgress, Alert } from '@mui/material';
 import { updatePassword } from 'firebase/auth';
 
-const Profile = () => {
+const Profile = ({ userId }) => {
   const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [profile, setProfile] = useState({ displayName: '', bio: '', photoURL: '' });
+  const [email, setEmail] = useState('');
+  const [cardCount, setCardCount] = useState(0);
+  
   const [imageFile, setImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [newPassword, setNewPassword] = useState('');
-  const [cardCount, setCardCount] = useState(0);
+
+  const isViewOnly = !user || (userId && userId !== user.uid);
+  const targetUserId = userId || (user ? user.uid : null);
 
   useEffect(() => {
-    if (user) {
+    if (targetUserId) {
       const fetchData = async () => {
+        setLoading(true);
+        setError(null);
         try {
-          setLoading(true);
-          const profilePromise = getDoc(doc(db, 'users', user.uid));
-          const cardsPromise = getDocs(query(collection(db, "cards"), where("userId", "==", user.uid)));
+          const profilePromise = getDoc(doc(db, 'users', targetUserId));
+          const cardsPromise = getDocs(query(collection(db, "cards"), where("userId", "==", targetUserId)));
 
           const [profileSnap, cardsSnap] = await Promise.all([profilePromise, cardsPromise]);
 
+          let userProfile = { displayName: '', bio: '', photoURL: '' };
+          let userEmail = '';
+
           if (profileSnap.exists()) {
-            setProfile(profileSnap.data());
-          } else {
-            setProfile({ displayName: user.displayName || '', bio: '', photoURL: user.photoURL || '' });
+            const profileData = profileSnap.data();
+            userProfile = { ...userProfile, ...profileData };
+            userEmail = profileData.email || '';
+          }
+
+          setCardCount(cardsSnap.size);
+
+          if (!userEmail && cardsSnap.docs.length > 0) {
+            const cardData = cardsSnap.docs[0].data();
+            userEmail = cardData.userEmail || '';
+          }
+
+          if (!userProfile.displayName && userEmail) {
+            userProfile.displayName = userEmail.split('@')[0];
           }
           
-          setCardCount(cardsSnap.size);
+          if (!userProfile.displayName) {
+              userProfile.displayName = "User";
+          }
+          
+          if(!userEmail && isViewOnly) {
+              userEmail = "Email not found";
+          } else if (!userEmail && !isViewOnly) {
+              userEmail = user.email;
+          }
+
+          setProfile(userProfile);
+          setEmail(userEmail);
 
         } catch (err) {
           console.error("Error fetching profile data:", err);
@@ -46,7 +77,7 @@ const Profile = () => {
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [targetUserId, user]);
 
   const handleInputChange = (e) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -57,7 +88,7 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    if (user) {
+    if (user && !isViewOnly) {
       setIsSaving(true);
       try {
         let photoURL = profile.photoURL;
@@ -67,7 +98,10 @@ const Profile = () => {
           photoURL = await getDownloadURL(storageRef);
         }
         const docRef = doc(db, 'users', user.uid);
-        await setDoc(docRef, { ...profile, photoURL }, { merge: true });
+        const profileToSave = { ...profile, photoURL, email: user.email };
+        await setDoc(docRef, profileToSave, { merge: true });
+        setProfile(profileToSave);
+        setEmail(user.email);
         alert('Profile updated successfully!');
       } catch (error) {
         alert('Error updating profile.');
@@ -79,7 +113,7 @@ const Profile = () => {
   };
 
   const handleUpdatePassword = async () => {
-    if (user && newPassword) {
+    if (user && newPassword && !isViewOnly) {
       try {
         await updatePassword(user, newPassword);
         alert('Password updated successfully!');
@@ -99,56 +133,61 @@ const Profile = () => {
       return <Alert severity="error">{error}</Alert>
   }
 
-  if (!user) {
-    return <Typography>Please log in to see your profile.</Typography>
+  if (!targetUserId) {
+    return <Typography>Please log in to see a profile.</Typography>
   }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 4 }}>
       <Avatar src={profile.photoURL || 'https://i.pravatar.cc/150'} sx={{ width: 100, height: 100 }} />
       <Typography variant="h5">{profile.displayName}</Typography>
-      <Typography variant="body1" color="text.secondary">{user.email}</Typography>
+      <Typography variant="body1" color="text.secondary">{email}</Typography>
       <Typography variant="body1" color="text.secondary">Cards Uploaded: {cardCount}</Typography>
-      <Button variant="contained" component="label" disabled={isSaving}>
-        Upload Picture
-        <input type="file" hidden onChange={handleFileChange} />
-      </Button>
-      <TextField
-        label="Name"
-        name="displayName"
-        value={profile.displayName}
-        onChange={handleInputChange}
-        variant="outlined"
-        sx={{ width: '300px' }}
-        disabled={isSaving}
-      />
-      <TextField
-        label="Bio"
-        name="bio"
-        value={profile.bio}
-        onChange={handleInputChange}
-        variant="outlined"
-        multiline
-        rows={4}
-        sx={{ width: '300px' }}
-        disabled={isSaving}
-      />
-      <Button variant="contained" color="primary" onClick={handleSave} disabled={isSaving}>
-        {isSaving ? <CircularProgress size={24} /> : 'Save Profile'}
-      </Button>
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '300px', mt: 2 }}>
-        <TextField
-          label="New Password"
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          variant="outlined"
-          fullWidth
-        />
-        <Button variant="contained" color="primary" onClick={handleUpdatePassword} sx={{ mt: 1 }}>
-          Update Password
-        </Button>
-      </Box>
+      
+      {!isViewOnly && (
+        <>
+          <Button variant="contained" component="label" disabled={isSaving}>
+            Upload Picture
+            <input type="file" hidden onChange={handleFileChange} />
+          </Button>
+          <TextField
+            label="Name"
+            name="displayName"
+            value={profile.displayName}
+            onChange={handleInputChange}
+            variant="outlined"
+            sx={{ width: '300px' }}
+            disabled={isSaving}
+          />
+          <TextField
+            label="Bio"
+            name="bio"
+            value={profile.bio}
+            onChange={handleInputChange}
+            variant="outlined"
+            multiline
+            rows={4}
+            sx={{ width: '300px' }}
+            disabled={isSaving}
+          />
+          <Button variant="contained" color="primary" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <CircularProgress size={24} /> : 'Save Profile'}
+          </Button>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '300px', mt: 2 }}>
+            <TextField
+              label="New Password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              variant="outlined"
+              fullWidth
+            />
+            <Button variant="contained" color="primary" onClick={handleUpdatePassword} sx={{ mt: 1 }}>
+              Update Password
+            </Button>
+          </Box>
+        </>
+      )}
     </Box>
   );
 };

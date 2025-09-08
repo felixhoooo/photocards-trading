@@ -162,21 +162,21 @@ const Layout = () => {
           {drawer}
         </Drawer>
       </Box>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={location.pathname}
-          initial="initial"
-          animate="in"
-          exit="out"
-          variants={pageVariants}
-          transition={pageTransition}
-        >
-          <Container component="main" sx={{ flexGrow: 1, py: { xs: 3, sm: 4 }, px: { xs: 1 } }}>
-            <Toolbar />
+      <Container component="main" sx={{ flexGrow: 1, py: { xs: 3, sm: 4 }, px: { xs: 1 } }}>
+        <Toolbar />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial="initial"
+            animate="in"
+            exit="out"
+            variants={pageVariants}
+            transition={pageTransition}
+          >
             <Outlet />
-          </Container>
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
+      </Container>
       <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', backgroundColor: 'transparent' }}>
         <Container maxWidth="lg">
           <Typography variant="body2" color="text.secondary" align="center">
