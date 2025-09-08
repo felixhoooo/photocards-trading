@@ -18,7 +18,8 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { motion, AnimatePresence } from "framer-motion";
+// eslint-disable-next-line no-unused-vars
+import { AnimatePresence, motion } from "framer-motion";
 
 const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
@@ -23,7 +22,8 @@ import {
   Modal,
   Backdrop,
   Fade,
-  Pagination
+  Pagination,
+  CircularProgress
 } from "@mui/material";
 import { db, storage } from "../firebase";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
@@ -48,7 +48,7 @@ const generateCardId = (category) => {
   return `${prefix}-${timestamp}${random}`;
 };
 
-const CardForm = ({ onSave, onCancel, isEditing, card, onInputChange, onCategoryChange, onFileChange, imagePreview, backImagePreview, videoPreview }) => (
+const CardForm = ({ onSave, onCancel, isEditing, card, onInputChange, onCategoryChange, onFileChange, imagePreview, backImagePreview, videoPreview, isUploading }) => (
   <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, mb: 4 }}>
     <Typography variant="h6" gutterBottom align="center">{isEditing ? "Edit Card" : "Add New Card"}</Typography>
     <Box component="form" onSubmit={onSave}>
@@ -103,22 +103,16 @@ const CardForm = ({ onSave, onCancel, isEditing, card, onInputChange, onCategory
           />
         </Grid>
         <Grid item container spacing={2} xs={12} sx={{ textAlign: "center" }}>
-          <Grid item xs={4}>
+          <Grid item xs={6}>
             <Button variant="contained" component="label">
                 Upload Front Image
                 <input type="file" hidden name="frontImage" onChange={onFileChange} />
             </Button>
           </Grid>
-          <Grid item xs={4}>
+          <Grid item xs={6}>
             <Button variant="contained" component="label">
                 Upload Back Image
                 <input type="file" hidden name="backImage" onChange={onFileChange} />
-            </Button>
-          </Grid>
-          <Grid item xs={4}>
-            <Button variant="contained" component="label">
-                Upload Video
-                <input type="file" hidden name="video" onChange={onFileChange} />
             </Button>
           </Grid>
         </Grid>
@@ -138,7 +132,13 @@ const CardForm = ({ onSave, onCancel, isEditing, card, onInputChange, onCategory
                 )}
             </Grid>
         </Grid>
-        <Grid item xs={12} sx={{ textAlign: "center" }}>
+        <Grid item xs={12} sx={{ textAlign: "left" }}>
+            <Button variant="contained" component="label">
+                Upload Video
+                <input type="file" hidden name="video" onChange={onFileChange} />
+            </Button>
+          </Grid>
+        <Grid item xs={12} sx={{ textAlign: "left" }}>
           {videoPreview && (
             <Box sx={{ mt: 2 }}>
               <video src={videoPreview} controls style={{ maxHeight: 200, maxWidth: "100%" }} />
@@ -147,8 +147,8 @@ const CardForm = ({ onSave, onCancel, isEditing, card, onInputChange, onCategory
         </Grid>
         <Grid item xs={12} sx={{ textAlign: "center", mt: 2 }}>
           {isEditing && <Button onClick={onCancel} sx={{ mr: 1 }}>Cancel</Button>}
-          <Button type="submit" variant="contained" color="primary">
-            {isEditing ? "Update" : "Add"}
+          <Button type="submit" variant="contained" color="primary" disabled={isUploading}>
+            {isUploading ? <CircularProgress size={24} /> : (isEditing ? "Update" : "Add")}
           </Button>
         </Grid>
       </Grid>
@@ -174,6 +174,7 @@ const AdminPage = () => {
   const [openOverlay, setOpenOverlay] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
   const [page, setPage] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "cards"),
@@ -251,6 +252,7 @@ const AdminPage = () => {
 
   const handleSaveCard = (e) => {
     e.preventDefault();
+    setIsUploading(true);
     if (editingCard) {
       handleUpdateCard();
     } else {
@@ -266,6 +268,7 @@ const AdminPage = () => {
         () => {},
         (error) => {
           setSnackbar({ open: true, message: `Error uploading file: ${error.message}`, severity: "error" });
+          setIsUploading(false);
           reject(error);
         },
         () => {
@@ -280,65 +283,79 @@ const AdminPage = () => {
   const handleAddCard = async () => {
     if (!newCard.details || !newCard.category || !imageFile) {
       setSnackbar({ open: true, message: "Please fill out all fields, select a category, and select an image.", severity: "error" });
+      setIsUploading(false);
       return;
     }
 
-    const cardId = generateCardId(newCard.category);
-    const frontImageUrl = await uploadFile(imageFile, `images/${cardId}_front`);
-    let backImageUrl = null;
-    if (backImageFile) {
-        backImageUrl = await uploadFile(backImageFile, `images/${cardId}_back`);
+    try {
+        const cardId = generateCardId(newCard.category);
+        const frontImageUrl = await uploadFile(imageFile, `images/${cardId}_front`);
+        let backImageUrl = null;
+        if (backImageFile) {
+            backImageUrl = await uploadFile(backImageFile, `images/${cardId}_back`);
+        }
+        let videoUrl = null;
+        if (videoFile) {
+            videoUrl = await uploadFile(videoFile, `videos/${cardId}_video`);
+        }
+        
+        const hashtags = typeof newCard.hashtags === 'string' ? newCard.hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : newCard.hashtags;
+        await addDoc(collection(db, "cards"), { ...newCard, cardId, hashtags, imageUrl: frontImageUrl, backImageUrl: backImageUrl, videoUrl: videoUrl, dateUploaded: new Date() });
+        setNewCard({ details: "", category: "", hashtags: "" });
+        setImageFile(null);
+        setBackImageFile(null);
+        setVideoFile(null);
+        setImagePreview(null);
+        setBackImagePreview(null);
+        setVideoPreview(null);
+        setSnackbar({ open: true, message: "Card added successfully!", severity: "success" });
+    } catch {
+        // Error is already handled in uploadFile
+    } finally {
+        setIsUploading(false);
     }
-    let videoUrl = null;
-    if (videoFile) {
-        videoUrl = await uploadFile(videoFile, `videos/${cardId}_video`);
-    }
-    
-    const hashtags = typeof newCard.hashtags === 'string' ? newCard.hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : newCard.hashtags;
-    await addDoc(collection(db, "cards"), { ...newCard, cardId, hashtags, imageUrl: frontImageUrl, backImageUrl: backImageUrl, videoUrl: videoUrl, dateUploaded: new Date() });
-    setNewCard({ details: "", category: "", hashtags: "" });
-    setImageFile(null);
-    setBackImageFile(null);
-    setVideoFile(null);
-    setImagePreview(null);
-    setBackImagePreview(null);
-    setVideoPreview(null);
-    setSnackbar({ open: true, message: "Card added successfully!", severity: "success" });
   };
 
   const handleUpdateCard = async () => {
     if (!editingCard.details || !editingCard.category) {
       setSnackbar({ open: true, message: "Please fill out all fields and select a category.", severity: "error" });
+      setIsUploading(false);
       return;
     }
 
-    const cardRef = doc(db, "cards", editingCard.id);
-    const hashtags = typeof editingCard.hashtags === 'string' ? editingCard.hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : editingCard.hashtags;
-    let frontImageUrl = editingCard.imageUrl;
-    let backImageUrl = editingCard.backImageUrl || null;
-    let videoUrl = editingCard.videoUrl || null;
+    try {
+        const cardRef = doc(db, "cards", editingCard.id);
+        const hashtags = typeof editingCard.hashtags === 'string' ? editingCard.hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : editingCard.hashtags;
+        let frontImageUrl = editingCard.imageUrl;
+        let backImageUrl = editingCard.backImageUrl || null;
+        let videoUrl = editingCard.videoUrl || null;
 
-    if (imageFile) {
-      frontImageUrl = await uploadFile(imageFile, `images/${editingCard.cardId}_front`);
+        if (imageFile) {
+          frontImageUrl = await uploadFile(imageFile, `images/${editingCard.cardId}_front`);
+        }
+
+        if (backImageFile) {
+            backImageUrl = await uploadFile(backImageFile, `images/${editingCard.cardId}_back`);
+        }
+
+        if (videoFile) {
+            videoUrl = await uploadFile(videoFile, `videos/${editingCard.cardId}_video`);
+        }
+
+        await updateDoc(cardRef, { ...editingCard, hashtags, imageUrl: frontImageUrl, backImageUrl: backImageUrl, videoUrl: videoUrl, dateUploaded: new Date() });
+        setEditingCard(null);
+        setImageFile(null);
+        setBackImageFile(null);
+        setVideoFile(null);
+        setImagePreview(null);
+        setBackImagePreview(null);
+        setVideoPreview(null);
+        setSnackbar({ open: true, message: "Card updated successfully!", severity: "success" });
+    } catch {
+        // Error is already handled in uploadFile
+    } finally {
+        setIsUploading(false);
     }
-
-    if (backImageFile) {
-        backImageUrl = await uploadFile(backImageFile, `images/${editingCard.cardId}_back`);
-    }
-
-    if (videoFile) {
-        videoUrl = await uploadFile(videoFile, `videos/${editingCard.cardId}_video`);
-    }
-
-    await updateDoc(cardRef, { ...editingCard, hashtags, imageUrl: frontImageUrl, backImageUrl: backImageUrl, videoUrl: videoUrl, dateUploaded: new Date() });
-    setEditingCard(null);
-    setImageFile(null);
-    setBackImageFile(null);
-    setVideoFile(null);
-    setImagePreview(null);
-    setBackImagePreview(null);
-    setVideoPreview(null);
-    setSnackbar({ open: true, message: "Card updated successfully!", severity: "success" });
   };
 
   const handleDeleteCard = async (id) => {
@@ -405,6 +422,7 @@ const AdminPage = () => {
           imagePreview={imagePreview}
           backImagePreview={backImagePreview}
           videoPreview={videoPreview}
+          isUploading={isUploading}
         />
       ) : (
         <CardForm
@@ -416,6 +434,7 @@ const AdminPage = () => {
           imagePreview={imagePreview}
           backImagePreview={backImagePreview}
           videoPreview={videoPreview}
+          isUploading={isUploading}
         />
       )}
 

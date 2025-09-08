@@ -1,8 +1,6 @@
-
-import React, { createContext } from 'react';
+import React from 'react';
 import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-
-export const ThemeContext = createContext();
+import { ThemeContext } from './Theme';
 
 const theme = createTheme({
   palette: {
