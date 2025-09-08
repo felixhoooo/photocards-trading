@@ -43,7 +43,7 @@ const Layout = () => {
 
   const navItems = [
     { text: "Home", path: "/" },
-    user && { text: "Admin", path: "/admin" },
+    user && { text: "Cards", path: "/cards" },
     user ? { text: "Logout", path: "/logout" } : { text: "Login", path: "/login" },
   ].filter(Boolean);
 

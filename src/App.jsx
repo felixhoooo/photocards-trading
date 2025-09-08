@@ -1,6 +1,6 @@
 
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider, CssBaseline, CircularProgress, Box } from "@mui/material";
 import Layout from "./components/Layout";
 import { auth } from "./firebase";
@@ -8,9 +8,10 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import theme from "./theme";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
-const AdminPage = lazy(() => import("./pages/AdminPage"));
+const CardsPage = lazy(() => import("./pages/CardsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const CardDetailsPage = lazy(() => import("./pages/CardDetailsPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 
 const LoadingFallback = () => (
   <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
@@ -30,8 +31,10 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/admin" element={user ? <AdminPage /> : <LoginPage />} />
-              <Route path="/card/:cardId" element={<CardDetailsPage />} />
+              <Route path="/cards" element={user ? <CardsPage /> : <LoginPage />} />
+              <Route path="/admin" element={<Navigate to="/cards" />} />
+              <Route path="/card/:id" element={<CardDetailsPage />} />
+              <Route path="/profile/:userId" element={<ProfilePage />} />
             </Route>
           </Routes>
         </Suspense>

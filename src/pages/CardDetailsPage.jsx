@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { doc } from 'firebase/firestore';
@@ -15,8 +14,8 @@ import {
 import FlipCard from '../components/FlipCard';
 
 const CardDetailsPage = () => {
-  const { cardId } = useParams();
-  const [card, loading, error] = useDocumentData(doc(db, 'cards', cardId));
+  const { id } = useParams();
+  const [card, loading, error] = useDocumentData(id ? doc(db, 'cards', id) : null);
 
   if (loading) {
     return (

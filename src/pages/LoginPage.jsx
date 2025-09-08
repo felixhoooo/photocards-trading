@@ -22,7 +22,7 @@ const LoginPage = () => {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate("/admin");
+      navigate("/cards");
     } catch (error) {
       setError(error.message);
     }
@@ -39,7 +39,7 @@ const LoginPage = () => {
         }}
       >
         <Typography component="h1" variant="h5">
-          Admin Login
+          Login
         </Typography>
         <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
           <TextField

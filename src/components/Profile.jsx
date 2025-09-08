@@ -64,7 +64,7 @@ const Profile = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 4 }}>
-      <Avatar src={profile.photoURL} sx={{ width: 100, height: 100 }} />
+      <Avatar src={profile.photoURL || 'https://i.pravatar.cc/150'} sx={{ width: 100, height: 100 }} />
       <Button variant="contained" component="label" disabled={isSaving}>
         Upload Picture
         <input type="file" hidden onChange={handleFileChange} />

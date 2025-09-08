@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getAuth, signOut } from "firebase/auth";
+import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
@@ -26,7 +26,7 @@ import {
   CircularProgress
 } from "@mui/material";
 import { db, storage } from "../firebase";
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from "firebase/firestore";
 import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
@@ -156,9 +156,10 @@ const CardForm = ({ onSave, onCancel, isEditing, card, onInputChange, onCategory
   </Paper>
 );
 
-const AdminPage = () => {
+const CardsPage = () => {
   const navigate = useNavigate();
   const auth = getAuth();
+  const [user, setUser] = useState(null);
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -172,26 +173,42 @@ const AdminPage = () => {
   const [backImagePreview, setBackImagePreview] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
   const [openOverlay, setOpenOverlay] = useState(false);
-  const [selectedImage, setSelectedImage] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
   const [page, setPage] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "cards"),
-      (snapshot) => {
-        const cardsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        setCards(cardsData);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Firestore snapshot error:", err);
-        setError(err);
-        setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+        navigate("/login");
       }
-    );
-
+    });
     return () => unsubscribe();
-  }, []);
+  }, [auth, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      const q = query(collection(db, "cards"), where("userId", "==", user.uid));
+      const unsubscribe = onSnapshot(q,
+        (snapshot) => {
+          const cardsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          setCards(cardsData);
+          setLoading(false);
+        },
+        (err) => {
+          console.error("Firestore snapshot error:", err);
+          setError(err);
+          setLoading(false);
+        }
+      );
+      return () => unsubscribe();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
   
   const paginatedCards = cards?.slice((page - 1) * CARDS_PER_PAGE, page * CARDS_PER_PAGE);
 
@@ -281,6 +298,12 @@ const AdminPage = () => {
   }
 
   const handleAddCard = async () => {
+    if (!user) {
+      setSnackbar({ open: true, message: "You must be logged in to add a card.", severity: "error" });
+      setIsUploading(false);
+      return;
+    }
+
     if (!newCard.details || !newCard.category || !imageFile) {
       setSnackbar({ open: true, message: "Please fill out all fields, select a category, and select an image.", severity: "error" });
       setIsUploading(false);
@@ -300,7 +323,7 @@ const AdminPage = () => {
         }
         
         const hashtags = typeof newCard.hashtags === 'string' ? newCard.hashtags.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : newCard.hashtags;
-        await addDoc(collection(db, "cards"), { ...newCard, cardId, hashtags, imageUrl: frontImageUrl, backImageUrl: backImageUrl, videoUrl: videoUrl, dateUploaded: new Date() });
+        await addDoc(collection(db, "cards"), { ...newCard, cardId, hashtags, imageUrl: frontImageUrl, backImageUrl: backImageUrl, videoUrl: videoUrl, dateUploaded: new Date(), userId: user.uid, userEmail: user.email });
         setNewCard({ details: "", category: "", hashtags: "" });
         setImageFile(null);
         setBackImageFile(null);
@@ -309,14 +332,20 @@ const AdminPage = () => {
         setBackImagePreview(null);
         setVideoPreview(null);
         setSnackbar({ open: true, message: "Card added successfully!", severity: "success" });
-    } catch {
-        // Error is already handled in uploadFile
+    } catch (error) {
+        console.error("Error adding card:", error);
+        setSnackbar({ open: true, message: `An unexpected error occurred: ${error.message}`, severity: "error" });
     } finally {
         setIsUploading(false);
     }
   };
 
   const handleUpdateCard = async () => {
+    if (!user) {
+        setSnackbar({ open: true, message: "You must be logged in to update a card.", severity: "error" });
+        setIsUploading(false);
+        return;
+    }
     if (!editingCard.details || !editingCard.category) {
       setSnackbar({ open: true, message: "Please fill out all fields and select a category.", severity: "error" });
       setIsUploading(false);
@@ -351,14 +380,19 @@ const AdminPage = () => {
         setBackImagePreview(null);
         setVideoPreview(null);
         setSnackbar({ open: true, message: "Card updated successfully!", severity: "success" });
-    } catch {
-        // Error is already handled in uploadFile
+    } catch (error) {
+        console.error("Error updating card:", error);
+        setSnackbar({ open: true, message: `An unexpected error occurred: ${error.message}`, severity: "error" });
     } finally {
         setIsUploading(false);
     }
   };
 
   const handleDeleteCard = async (id) => {
+    if (!user) {
+        setSnackbar({ open: true, message: "You must be logged in to delete a card.", severity: "error" });
+        return;
+    }
     try {
       await deleteDoc(doc(db, "cards", id));
       setSnackbar({ open: true, message: "Card deleted successfully!", severity: "success" });
@@ -381,7 +415,7 @@ const AdminPage = () => {
 
   const handleCloseOverlay = () => {
     setOpenOverlay(false);
-    setSelectedImage('');
+    setSelectedImage(null);
   };
 
   const handlePageChange = (event, value) => {
@@ -405,7 +439,7 @@ const AdminPage = () => {
 
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ flexGrow: 1 }}>
-          Admin Dashboard
+          Manage Cards
         </Typography>
         <Button variant="contained" onClick={handleLogout}>Logout</Button>
       </Box>
@@ -438,9 +472,9 @@ const AdminPage = () => {
         />
       )}
 
-      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>Existing Cards</Typography>
+      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>My Cards</Typography>
 
-      {loading && <Typography>Loading...</Typography>}
+      {loading && <CircularProgress />}
       {error && <Alert severity="error"><AlertTitle>Error</AlertTitle>{error.message}</Alert>}
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
@@ -457,7 +491,7 @@ const AdminPage = () => {
               <LazyLoadImage
                 alt={card.cardId}
                 effect="blur"
-                src={card.imageUrl}
+                src={card.imageUrl || 'https://via.placeholder.com/350x350'}
                 height="350"
                 width="100%"
                 style={{ objectFit: 'cover', cursor: 'pointer', height: { xs: 175, sm: 350 } }}
@@ -536,4 +570,4 @@ const AdminPage = () => {
   );
 };
 
-export default AdminPage;
+export default CardsPage;

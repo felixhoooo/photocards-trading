@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card as MuiCard, CardContent, Typography, Box } from "@mui/material";
 import { Link } from "react-router-dom";
@@ -12,7 +11,7 @@ const Card = ({ card }) => {
         <LazyLoadImage
           alt={card.cardId}
           effect="blur"
-          src={card.imageUrl}
+          src={card.imageUrl || 'https://via.placeholder.com/350x350'}
           height="350px"
           width="100%"
           style={{ objectFit: 'cover', height: { xs: 175, sm: 350 } }}
@@ -36,6 +35,11 @@ const Card = ({ card }) => {
           {card.dateUploaded && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Uploaded: {new Date(card.dateUploaded.seconds * 1000).toLocaleDateString()}
+            </Typography>
+          )}
+          {card.userEmail && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              By: {card.userEmail}
             </Typography>
           )}
         </CardContent>

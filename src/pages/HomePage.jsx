@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -120,7 +119,9 @@ const HomePage = () => {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' }, gap: '16px' }}>
         {paginatedCards.map((card) => (
-            <Card key={card.id} card={card} onImageClick={handleOpenOverlay} />
+          <div key={card.id}>
+            <Card card={card} onImageClick={handleOpenOverlay} />
+          </div>
         ))}
       </Box>
       <Modal
