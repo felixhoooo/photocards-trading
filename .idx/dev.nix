@@ -4,6 +4,26 @@
 	# Use https://search.nixos.org/packages to find packages
 	packages = [
 		pkgs.nodejs_22
+		pkgs.xorg.libX11
+		pkgs.xorg.libXcomposite
+        pkgs.xorg.libXcursor
+        pkgs.xorg.libXdamage
+        pkgs.xorg.libXfixes
+        pkgs.xorg.libXi
+        pkgs.xorg.libXrandr
+        pkgs.xorg.libXScrnSaver
+        pkgs.alsa-lib
+        pkgs.nss
+        pkgs.cups
+        pkgs.expat
+        pkgs.gcc.cc.lib
+        pkgs.gdk-pixbuf
+        pkgs.glib
+        pkgs.gtk3
+        pkgs.pango
+        pkgs.cairo
+        pkgs.atk
+        pkgs.chromium
 	];
 	# Sets environment variables in the workspace
 	env = {};
