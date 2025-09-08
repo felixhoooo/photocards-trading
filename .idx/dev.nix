@@ -24,6 +24,8 @@
         pkgs.cairo
         pkgs.atk
         pkgs.chromium
+        pkgs.xorg.libxcb
+        pkgs.xorg.libXext
 	];
 	# Sets environment variables in the workspace
 	env = {};

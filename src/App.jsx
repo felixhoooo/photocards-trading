@@ -36,6 +36,7 @@ function App() {
               <Route path="/card/:id" element={<CardDetailsPage />} />
               <Route path="/profile" element={user ? <ProfilePage /> : <LoginPage />} />
               <Route path="/profile/:userId" element={<ProfilePage />} />
+              <Route path="/user/:userId" element={<ProfilePage />} />
             </Route>
           </Routes>
         </Suspense>

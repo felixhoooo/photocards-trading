@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getAuth, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
@@ -218,11 +218,6 @@ const CardsPage = () => {
   }, [user]);
   
   const paginatedCards = cards?.slice((page - 1) * CARDS_PER_PAGE, page * CARDS_PER_PAGE);
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigate("/login");
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -507,7 +502,6 @@ const CardsPage = () => {
         <Typography variant="h4" component="h1" gutterBottom sx={{ flexGrow: 1 }}>
           Manage Cards
         </Typography>
-        <Button variant="contained" onClick={handleLogout}>Logout</Button>
       </Box>
 
       {editingCard ? (

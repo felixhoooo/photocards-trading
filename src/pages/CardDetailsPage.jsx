@@ -12,6 +12,7 @@ import {
   Paper,
 } from '@mui/material';
 import FlipCard from '../components/FlipCard';
+import CommentSection from '../components/CommentSection';
 
 const CardDetailsPage = () => {
   const { id } = useParams();
@@ -76,6 +77,9 @@ const CardDetailsPage = () => {
           </Box>
         </Paper>
       )}
+      <Paper elevation={3} sx={{ mt: 4, p: 2 }}>
+        <CommentSection cardId={id} />
+      </Paper>
     </Container>
   );
 };

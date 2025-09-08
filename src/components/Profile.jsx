@@ -137,15 +137,35 @@ const Profile = ({ userId }) => {
     return <Typography>Please log in to see a profile.</Typography>
   }
 
+  if (isViewOnly) {
+    return (
+      <Box 
+        sx={{
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          minHeight: 'calc(100vh - 128px)', 
+          textAlign: 'center',
+          gap: 2 
+        }}
+      >
+        <Avatar src={profile.photoURL || 'https://i.pravatar.cc/150'} sx={{ width: 100, height: 100 }} />
+        <Typography variant="h5">{profile.displayName}</Typography>
+        <Typography variant="body1" color="text.secondary">{email}</Typography>
+        <Typography variant="body1" color="text.secondary">Cards Uploaded: {cardCount}</Typography>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 4 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 4, mb: 4 }}>
       <Avatar src={profile.photoURL || 'https://i.pravatar.cc/150'} sx={{ width: 100, height: 100 }} />
       <Typography variant="h5">{profile.displayName}</Typography>
       <Typography variant="body1" color="text.secondary">{email}</Typography>
       <Typography variant="body1" color="text.secondary">Cards Uploaded: {cardCount}</Typography>
       
-      {!isViewOnly && (
-        <>
+      <>
           <Button variant="contained" component="label" disabled={isSaving}>
             Upload Picture
             <input type="file" hidden onChange={handleFileChange} />
@@ -187,7 +207,6 @@ const Profile = ({ userId }) => {
             </Button>
           </Box>
         </>
-      )}
     </Box>
   );
 };
