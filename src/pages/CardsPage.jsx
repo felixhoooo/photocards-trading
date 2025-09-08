@@ -23,11 +23,16 @@ import {
   Backdrop,
   Fade,
   Pagination,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 import { db, storage } from "../firebase";
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from "firebase/firestore";
-import { ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from "firebase/firestore";
+import { ref, getDownloadURL, uploadBytesResumable, deleteObject } from "firebase/storage";
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
 
@@ -176,6 +181,8 @@ const CardsPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [page, setPage] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -388,16 +395,49 @@ const CardsPage = () => {
     }
   };
 
-  const handleDeleteCard = async (id) => {
-    if (!user) {
-        setSnackbar({ open: true, message: "You must be logged in to delete a card.", severity: "error" });
-        return;
+  const handleDeleteCard = async () => {
+    if (!user || !cardToDelete) {
+      setSnackbar({ open: true, message: "You must be logged in to delete a card.", severity: "error" });
+      return;
     }
+  
     try {
-      await deleteDoc(doc(db, "cards", id));
-      setSnackbar({ open: true, message: "Card deleted successfully!", severity: "success" });
+      const cardDoc = await getDoc(doc(db, "cards", cardToDelete.id));
+      if (!cardDoc.exists()) {
+        setSnackbar({ open: true, message: "Card not found.", severity: "error" });
+        return;
+      }
+  
+      const cardData = cardDoc.data();
+  
+      // Delete front image
+      if (cardData.imageUrl) {
+        const frontImageRef = ref(storage, `images/${cardData.cardId}_front`);
+        await deleteObject(frontImageRef);
+      }
+  
+      // Delete back image
+      if (cardData.backImageUrl) {
+        const backImageRef = ref(storage, `images/${cardData.cardId}_back`);
+        await deleteObject(backImageRef);
+      }
+  
+      // Delete video
+      if (cardData.videoUrl) {
+        const videoRef = ref(storage, `videos/${cardData.cardId}_video`);
+        await deleteObject(videoRef);
+      }
+  
+      // Delete Firestore document
+      await deleteDoc(doc(db, "cards", cardToDelete.id));
+  
+      setSnackbar({ open: true, message: "Card and associated files deleted successfully!", severity: "success" });
     } catch (error) {
+      console.error("Error deleting card:", error);
       setSnackbar({ open: true, message: `Error deleting card: ${error.message}`, severity: "error" });
+    } finally {
+      setOpenDeleteConfirm(false);
+      setCardToDelete(null);
     }
   };
 
@@ -429,6 +469,16 @@ const CardsPage = () => {
     setVideoPreview(card.videoUrl || null);
   }
 
+  const confirmDelete = (card) => {
+    setCardToDelete(card);
+    setOpenDeleteConfirm(true);
+  };
+
+  const handleCloseDeleteConfirm = () => {
+    setOpenDeleteConfirm(false);
+    setCardToDelete(null);
+  };
+
   return (
     <Container maxWidth="lg">
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar}>
@@ -436,6 +486,22 @@ const CardsPage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={openDeleteConfirm}
+        onClose={handleCloseDeleteConfirm}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this card and all its associated files? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteConfirm}>Cancel</Button>
+          <Button onClick={handleDeleteCard} color="error">Delete</Button>
+        </DialogActions>
+      </Dialog>
 
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ flexGrow: 1 }}>
@@ -517,7 +583,7 @@ const CardsPage = () => {
               </CardContent>
               <CardActions>
                 <Button size="small" onClick={() => handleEdit(card)}>Edit</Button>
-                <Button size="small" onClick={() => handleDeleteCard(card.id)}>Delete</Button>
+                <Button size="small" onClick={() => confirmDelete(card)}>Delete</Button>
               </CardActions>
             </MuiCard>
           </Box>

@@ -34,7 +34,7 @@ function App() {
               <Route path="/cards" element={user ? <CardsPage /> : <LoginPage />} />
               <Route path="/admin" element={<Navigate to="/cards" />} />
               <Route path="/card/:id" element={<CardDetailsPage />} />
-              <Route path="/profile/:userId" element={<ProfilePage />} />
+              <Route path="/profile" element={user ? <ProfilePage /> : <LoginPage />} />
             </Route>
           </Routes>
         </Suspense>
