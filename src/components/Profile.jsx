@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db, storage } from '../firebase';
@@ -43,23 +44,8 @@ const Profile = ({ userId }) => {
 
           setCardCount(cardsSnap.size);
 
-          if (!userEmail && cardsSnap.docs.length > 0) {
-            const cardData = cardsSnap.docs[0].data();
-            userEmail = cardData.userEmail || '';
-          }
-
-          if (!userProfile.displayName && userEmail) {
-            userProfile.displayName = userEmail.split('@')[0];
-          }
-          
-          if (!userProfile.displayName) {
-              userProfile.displayName = "User";
-          }
-          
-          if(!userEmail && isViewOnly) {
-              userEmail = "Email not found";
-          } else if (!userEmail && !isViewOnly) {
-              userEmail = user.email;
+          if (!isViewOnly) {
+            userEmail = user.email;
           }
 
           setProfile(userProfile);
@@ -77,7 +63,7 @@ const Profile = ({ userId }) => {
     } else {
       setLoading(false);
     }
-  }, [targetUserId, user]);
+  }, [targetUserId, user, isViewOnly]);
 
   const handleInputChange = (e) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -151,7 +137,7 @@ const Profile = ({ userId }) => {
         }}
       >
         <Avatar src={profile.photoURL || 'https://i.pravatar.cc/150'} sx={{ width: 100, height: 100 }} />
-        <Typography variant="h5">{profile.displayName}</Typography>
+        <Typography variant="h5">{profile.displayName || 'User'}</Typography>
         <Typography variant="body1" color="text.secondary">{email}</Typography>
         <Typography variant="body1" color="text.secondary">Cards Uploaded: {cardCount}</Typography>
       </Box>
@@ -161,7 +147,7 @@ const Profile = ({ userId }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 4, mb: 4 }}>
       <Avatar src={profile.photoURL || 'https://i.pravatar.cc/150'} sx={{ width: 100, height: 100 }} />
-      <Typography variant="h5">{profile.displayName}</Typography>
+      <Typography variant="h5">{profile.displayName || 'User'}</Typography>
       <Typography variant="body1" color="text.secondary">{email}</Typography>
       <Typography variant="body1" color="text.secondary">Cards Uploaded: {cardCount}</Typography>
       

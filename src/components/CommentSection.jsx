@@ -26,6 +26,14 @@ import {
 
 const COMMENTS_PER_PAGE = 5;
 
+const isEmail = (str) => {
+    if (typeof str !== 'string') {
+        return false;
+    }
+    // A simple regex to check for email format
+    return /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(str);
+}
+
 const CommentSection = ({ cardId }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -68,7 +76,7 @@ const CommentSection = ({ cardId }) => {
       text: newComment,
       createdAt: serverTimestamp(),
       userId: user.uid,
-      userName: user.displayName,
+      userName: !isEmail(user.displayName) ? user.displayName : null,
       userPhotoURL: user.photoURL,
     });
 
@@ -113,14 +121,16 @@ const CommentSection = ({ cardId }) => {
             <ListItem alignItems="flex-start">
               <ListItemAvatar>
                 <Link to={`/user/${comment.userId}`}>
-                  <Avatar alt={comment.userName} src={comment.userPhotoURL} />
+                  <Avatar alt={comment.userName || ''} src={comment.userPhotoURL} />
                 </Link>
               </ListItemAvatar>
               <ListItemText
                 primary={
-                  <Link to={`/user/${comment.userId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    {comment.userName}
-                  </Link>
+                  comment.userName && !isEmail(comment.userName) ? (
+                    <Link to={`/user/${comment.userId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      {comment.userName}
+                    </Link>
+                  ) : null
                 }
                 secondary={
                   <React.Fragment>
