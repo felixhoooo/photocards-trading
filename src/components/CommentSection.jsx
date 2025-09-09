@@ -9,6 +9,9 @@ import {
   onSnapshot,
   addDoc,
   serverTimestamp,
+  doc,
+  deleteDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import {
   Box,
@@ -22,7 +25,10 @@ import {
   TextField,
   Button,
   Pagination,
+  IconButton,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const COMMENTS_PER_PAGE = 5;
 
@@ -30,7 +36,6 @@ const isEmail = (str) => {
     if (typeof str !== 'string') {
         return false;
     }
-    // A simple regex to check for email format
     return /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(str);
 }
 
@@ -39,6 +44,8 @@ const CommentSection = ({ cardId }) => {
   const [newComment, setNewComment] = useState('');
   const [user, setUser] = useState(null);
   const [page, setPage] = useState(1);
+  const [editingComment, setEditingComment] = useState(null);
+  const [editedText, setEditedText] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -87,6 +94,29 @@ const CommentSection = ({ cardId }) => {
     setPage(value);
   };
 
+  const handleDelete = async (commentId) => {
+    await deleteDoc(doc(db, 'cards', cardId, 'comments', commentId));
+  };
+
+  const handleUpdate = async () => {
+    if (!editingComment) return;
+    await updateDoc(doc(db, 'cards', cardId, 'comments', editingComment.id), {
+        text: editedText,
+    });
+    setEditingComment(null);
+    setEditedText('');
+  };
+
+    const startEditing = (comment) => {
+        setEditingComment(comment);
+        setEditedText(comment.text);
+    };
+
+    const cancelEditing = () => {
+        setEditingComment(null);
+        setEditedText('');
+    };
+
   const paginatedComments = comments.slice((page - 1) * COMMENTS_PER_PAGE, page * COMMENTS_PER_PAGE);
 
   return (
@@ -133,6 +163,19 @@ const CommentSection = ({ cardId }) => {
                   ) : null
                 }
                 secondary={
+                    editingComment && editingComment.id === comment.id ? (
+                        <Box>
+                            <TextField
+                                fullWidth
+                                multiline
+                                rows={2}
+                                value={editedText}
+                                onChange={(e) => setEditedText(e.target.value)}
+                            />
+                            <Button onClick={handleUpdate}>Save</Button>
+                            <Button onClick={cancelEditing}>Cancel</Button>
+                        </Box>
+                    ) : (
                   <React.Fragment>
                     <Typography
                       sx={{ display: 'inline' }}
@@ -143,8 +186,19 @@ const CommentSection = ({ cardId }) => {
                       {comment.text}
                     </Typography>
                   </React.Fragment>
+                    )
                 }
               />
+                {user && user.uid === comment.userId && (
+                    <Box>
+                        <IconButton onClick={() => startEditing(comment)}>
+                            <EditIcon />
+                        </IconButton>
+                        <IconButton onClick={() => handleDelete(comment.id)}>
+                            <DeleteIcon />
+                        </IconButton>
+                    </Box>
+                )}
             </ListItem>
             {index < paginatedComments.length - 1 && (
               <Divider variant="inset" component="li" />
