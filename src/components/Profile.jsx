@@ -19,8 +19,19 @@ const Profile = ({ userId }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [newPassword, setNewPassword] = useState('');
 
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [isPasswordUser, setIsPasswordUser] = useState(false);
+
   const isViewOnly = !user || (userId && userId !== user.uid);
   const targetUserId = userId || (user ? user.uid : null);
+
+  useEffect(() => {
+    if (user && !isViewOnly) {
+        const providerData = user.providerData;
+        setIsGoogleUser(providerData.some(p => p.providerId === 'google.com'));
+        setIsPasswordUser(providerData.some(p => p.providerId === 'password'));
+    }
+  }, [user, isViewOnly]);
 
   useEffect(() => {
     if (targetUserId) {
@@ -40,6 +51,12 @@ const Profile = ({ userId }) => {
             const profileData = profileSnap.data();
             userProfile = { ...userProfile, ...profileData };
             userEmail = profileData.email || '';
+          } else if (user && !isViewOnly) { 
+            const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+            if (isGoogle) {
+                userProfile.displayName = user.displayName;
+                userProfile.photoURL = user.photoURL;
+            }
           }
 
           setCardCount(cardsSnap.size);
@@ -152,7 +169,7 @@ const Profile = ({ userId }) => {
       <Typography variant="body1" color="text.secondary">Cards Uploaded: {cardCount}</Typography>
       
       <>
-          <Button variant="contained" component="label" disabled={isSaving}>
+          <Button variant="contained" component="label" disabled={isSaving || isGoogleUser}>
             Upload Picture
             <input type="file" hidden onChange={handleFileChange} />
           </Button>
@@ -163,7 +180,7 @@ const Profile = ({ userId }) => {
             onChange={handleInputChange}
             variant="outlined"
             sx={{ width: '300px' }}
-            disabled={isSaving}
+            disabled={isSaving || isGoogleUser}
           />
           <TextField
             label="Bio"
@@ -179,19 +196,21 @@ const Profile = ({ userId }) => {
           <Button variant="contained" color="primary" onClick={handleSave} disabled={isSaving}>
             {isSaving ? <CircularProgress size={24} /> : 'Save Profile'}
           </Button>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '300px', mt: 2 }}>
-            <TextField
-              label="New Password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              variant="outlined"
-              fullWidth
-            />
-            <Button variant="contained" color="primary" onClick={handleUpdatePassword} sx={{ mt: 1 }}>
-              Update Password
-            </Button>
-          </Box>
+          {isPasswordUser && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '300px', mt: 2 }}>
+                <TextField
+                label="New Password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                variant="outlined"
+                fullWidth
+                />
+                <Button variant="contained" color="primary" onClick={handleUpdatePassword} sx={{ mt: 1 }}>
+                Update Password
+                </Button>
+            </Box>
+          )}
         </>
     </Box>
   );

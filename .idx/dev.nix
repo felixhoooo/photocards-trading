@@ -10,6 +10,7 @@
         pkgs.xorg.libXdamage
         pkgs.xorg.libXfixes
         pkgs.xorg.libXi
+        pkgs.xorg.libXrender
         pkgs.xorg.libXrandr
         pkgs.xorg.libXScrnSaver
         pkgs.alsa-lib
